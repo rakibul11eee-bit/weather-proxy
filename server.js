@@ -296,3 +296,13 @@ app.listen(PORT, () => {
     console.log(`📍 Health check: http://localhost:${PORT}/health`);
     console.log(`📈 Status check: http://localhost:${PORT}/status`);
 });
+// Add this endpoint to your existing server.js
+app.get('/health', (req, res) => {
+    res.json({ 
+        status: 'healthy',
+        timestamp: new Date().toISOString(),
+        uptime: process.uptime(),
+        serverUrl: `${req.protocol}://${req.get('host')}`
+    });
+});
+
