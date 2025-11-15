@@ -13,18 +13,18 @@ const API_KEYS = [
     process.env.OPENWEATHER_KEY_2,
     process.env.OPENWEATHER_KEY_3,
     process.env.OPENWEATHER_KEY_4
-].filter(key => key); // Remove any undefined keys
+].filter(key => key);
 
 const DAILY_LIMIT = parseInt(process.env.DAILY_LIMIT) || 900;
 const PORT = process.env.PORT || 3000;
 
-// Key rotation and usage tracking
 let currentKeyIndex = 0;
 let keyUsage = {};
 let lastResetDate = new Date().toDateString();
 
 // Initialize usage tracking
 function initializeUsage() {
+    keyUsage = {}; // Initialize as empty object
     API_KEYS.forEach((key, index) => {
         keyUsage[index] = 0;
     });
@@ -44,7 +44,6 @@ function resetDailyUsage() {
 function getNextApiKey() {
     resetDailyUsage();
     
-    // Try current key first
     if (keyUsage[currentKeyIndex] < DAILY_LIMIT) {
         return {
             key: API_KEYS[currentKeyIndex],
@@ -65,19 +64,16 @@ function getNextApiKey() {
         }
     }
     
-    // All keys exhausted
     return null;
 }
 
-// Track API usage
+// Track usage
 function trackUsage(keyIndex) {
     keyUsage[keyIndex]++;
     console.log(`Key ${keyIndex + 1} usage: ${keyUsage[keyIndex]}/${DAILY_LIMIT}`);
 }
 
-// API Routes
-
-// Weather by city name
+// Weather endpoint
 app.get('/weather', async (req, res) => {
     const { q, lat, lon } = req.query;
     
@@ -102,7 +98,6 @@ app.get('/weather', async (req, res) => {
         const response = await axios.get(apiUrl);
         trackUsage(apiKeyData.index);
         
-        // Add usage info to response
         response.data.apiUsage = {
             keyUsed: apiKeyData.index + 1,
             callsRemaining: DAILY_LIMIT - keyUsage[apiKeyData.index]
@@ -117,7 +112,6 @@ app.get('/weather', async (req, res) => {
             // Rate limit exceeded, try next key
             const nextKey = getNextApiKey();
             if (nextKey) {
-                // Retry with next key
                 try {
                     const retryUrl = lat && lon 
                         ? `https://api.openweathermap.org/data/2.5/weather?lat=${lat}&lon=${lon}&appid=${nextKey.key}&units=metric`
@@ -144,7 +138,7 @@ app.get('/weather', async (req, res) => {
     }
 });
 
-// Forecast data
+// Forecast endpoint
 app.get('/forecast', async (req, res) => {
     const { lat, lon } = req.query;
     
@@ -241,19 +235,26 @@ app.get('/reverse', async (req, res) => {
     }
 });
 
-// API usage status
+// Status endpoint
 app.get('/status', (req, res) => {
     resetDailyUsage();
+    
+    // Convert keyUsage object to array for response
+    const usageArray = [];
+    for (let i = 0; i < API_KEYS.length; i++) {
+        const usage = keyUsage[i] || 0;
+        usageArray.push({
+            keyNumber: i + 1,
+            callsMade: usage,
+            callsRemaining: Math.max(0, DAILY_LIMIT - usage),
+            percentageUsed: Math.round((usage / DAILY_LIMIT) * 100)
+        });
+    }
     
     const status = {
         totalKeys: API_KEYS.length,
         dailyLimit: DAILY_LIMIT,
-        usage: keyUsage.map((usage, index) => ({
-            keyNumber: index + 1,
-            callsMade: usage,
-            callsRemaining: Math.max(0, DAILY_LIMIT - usage),
-            percentageUsed: Math.round((usage / DAILY_LIMIT) * 100)
-        })),
+        usage: usageArray,
         lastReset: lastResetDate,
         serverTime: new Date().toISOString()
     };
@@ -264,8 +265,24 @@ app.get('/status', (req, res) => {
 // Health check
 app.get('/health', (req, res) => {
     res.json({ 
-        status: 'healthy', 
+        status: 'healthy',
         timestamp: new Date().toISOString(),
+        uptime: process.uptime()
+    });
+});
+
+// Root endpoint
+app.get('/', (req, res) => {
+    res.json({ 
+        message: 'Weather Proxy Server',
+        version: '1.0.0',
+        endpoints: {
+            weather: '/weather',
+            forecast: '/forecast',
+            reverse: '/reverse',
+            status: '/status',
+            health: '/health'
+        },
         uptime: process.uptime()
     });
 });
@@ -278,5 +295,4 @@ app.listen(PORT, () => {
     console.log(`🔑 Total API keys: ${API_KEYS.length}`);
     console.log(`📍 Health check: http://localhost:${PORT}/health`);
     console.log(`📈 Status check: http://localhost:${PORT}/status`);
-
 });
