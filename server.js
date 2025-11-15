@@ -9,10 +9,10 @@ app.use(express.json());
 
 // API Configuration
 const API_KEYS = [
-    process.env.b829ee88a8488d67d0a7ec8a8d7ac618,
-    process.env.c6ab8c5ad781aa026691fbeb9814f474,
-    process.env.f064dc8746bf8ad507c620b6c5a3c7be,
-    process.env.f8910302cae5b18ea9eb016b0f43a1aa
+    process.env.OPENWEATHER_KEY_1,
+    process.env.OPENWEATHER_KEY_2,
+    process.env.OPENWEATHER_KEY_3,
+    process.env.OPENWEATHER_KEY_4
 ].filter(key => key); // Remove any undefined keys
 
 const DAILY_LIMIT = parseInt(process.env.DAILY_LIMIT) || 900;
@@ -278,4 +278,5 @@ app.listen(PORT, () => {
     console.log(`🔑 Total API keys: ${API_KEYS.length}`);
     console.log(`📍 Health check: http://localhost:${PORT}/health`);
     console.log(`📈 Status check: http://localhost:${PORT}/status`);
+
 });
